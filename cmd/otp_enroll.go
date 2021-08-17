@@ -36,7 +36,7 @@ var enrollCmd = &cobra.Command{
 			logrus.Debugf("%v successful attempts of 2 needed\n", score)
 			logrus.Infoln("Validate TOTP enrollment")
 			var valid bool
-			valid, err = sts.ValidateTOTP(key)
+			valid, err = sts.ValidateTOTPFromCLI(key)
 			if err != nil {
 				logrus.Errorln(err.Error())
 			}

@@ -30,47 +30,44 @@ func handleRequest(ctx context.Context, request events.ALBTargetGroupRequest) (e
 		return returnBlackhole()
 	}
 
-	// no errors and data so lets go
+	challengeSet := []sts.ChallengePair{}
+
 	firstEntry, getFirstEntryErr := sts.GetTOTPEntry(sts.GetStringFlag("table_name"), challenge.Issuer, challenge.AccountName)
 	if getFirstEntryErr != nil {
-		if !challenge.ValidateRole(firstEntry) {
-			logrus.Errorf("Role %s is not in entry %v\n", challenge.Role, firstEntry)
-			return returnError(errors.New("Invalid role"))
-		}
-
-		if primaryErr := challenge.ValidatePrimaryChallenge(firstEntry); primaryErr == nil {
-			if challenge.NeedsSecondaryValidation(firstEntry) {
-				if secondaryErr := challenge.ValidateSecondaryChallenge(sts.GetStringFlag("table_name"), firstEntry); secondaryErr != nil {
-					// error on validating secondary
-					logrus.Errorln(secondaryErr.Error(), " - error validating second code")
-					return returnError(secondaryErr)
-				} else {
-					// valid code and return creds
-					return returnCreds(challenge)
-				}
-			} else {
-				// valid code and return creds
-				return returnCreds(challenge)
-			}
-		} else {
-			// error out for not validating primary code
-			logrus.Errorln(primaryErr.Error(), " - primary code is not valid")
-			return returnError(primaryErr)
-		}
-	} else {
-		// error out for not being able to get totp info
 		logrus.Errorln(getFirstEntryErr.Error())
-		// add error return
-		return returnError(getFirstEntryErr)
+		return returnError(errors.New("Unable to find user"))
 	}
 
+	if !challenge.ValidateRole(firstEntry) {
+		returnError(errors.New("Invalid role"))
+	}
+
+	challengeSet = append(challengeSet, sts.ChallengePair{challenge.TOTPCode, firstEntry.URL})
+
+	if challenge.NeedsSecondaryValidation(firstEntry) {
+		secondEntry, getSecondEntryErr := sts.GetTOTPEntry(sts.GetStringFlag("table_name"), challenge.Issuer, challenge.SecondaryAccountName)
+		if getSecondEntryErr != nil {
+			logrus.Errorln(getSecondEntryErr.Error())
+			return returnError(errors.New("Unable to find user(secondary)"))
+		}
+
+		challengeSet = append(challengeSet, sts.ChallengePair{challenge.SecondaryTOTPCode, secondEntry.URL})
+	}
+
+	challengeErr := sts.ValidateChallengeSet(challengeSet)
+	if challengeErr != nil {
+		logrus.Errorln(challengeErr.Error())
+		return returnError(errors.New("Unable to validate codes"))
+	}
+
+	return returnCreds(challenge)
 	//return events.ALBTargetGroupResponse{Body: request.Body, StatusCode: 200, StatusDescription: "200 OK", IsBase64Encoded: false, Headers: map[string]string{}}, nil
 }
 
 func returnBlackhole() (events.ALBTargetGroupResponse, error) {
 	return events.ALBTargetGroupResponse{Body: "", StatusCode: 308, StatusDescription: "308 Permanent Redirect", IsBase64Encoded: false, Headers: map[string]string{
 		"Location": "https://science.nasa.gov/astrophysics/focus-areas/black-holes",
-	}}, nil
+	}}, errors.New("Unknown client")
 }
 
 func returnError(err error) (events.ALBTargetGroupResponse, error) {
@@ -78,6 +75,14 @@ func returnError(err error) (events.ALBTargetGroupResponse, error) {
 }
 
 func returnCreds(challenge sts.TOTPChallenge) (events.ALBTargetGroupResponse, error) {
+	// make call to audit notifier first
+	publishErr := sts.PublishAuditEvent(challenge.Issuer, challenge.AccountName, challenge.Role)
+	if publishErr != nil {
+		logrus.Errorln(publishErr.Error())
+		return returnError(errors.New("Unable to publish audit event"))
+	}
+
+	// then mint creds
 	creds, err := sts.GetCredentials(challenge.Issuer, challenge.AccountName, challenge.Role)
 	if err != nil {
 		logrus.Errorln(err.Error())

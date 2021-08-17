@@ -29,3 +29,7 @@ variable cert_arn {
 variable auth_table_name {
     type = string
 }
+
+variable sns_arn {
+    type = string
+}

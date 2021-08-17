@@ -20,6 +20,7 @@ func init() {
 	config.BindEnv("secondary_account_name")
 	config.BindEnv("roles")
 	config.BindEnv("secondary_authorizers")
+	config.BindEnv("sns_arn")
 }
 
 func Bind(configName string, flag *pflag.Flag) {

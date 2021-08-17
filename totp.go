@@ -29,7 +29,25 @@ func DisplayTOTPQR(key *otp.Key) error {
 	return nil
 }
 
-func ValidateTOTP(key *otp.Key) (bool, error) {
+func ValidateTOTPKey(code string, key *otp.Key) (bool, error) {
+	valid := totp.Validate(code, key.Secret())
+	if valid {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func ValidateTOTPURL(code, url string) (bool, error) {
+	key, keyErr := otp.NewKeyFromURL(url)
+	if keyErr != nil {
+		return false, keyErr
+	}
+
+	return ValidateTOTPKey(code, key)
+}
+
+func ValidateTOTPFromCLI(key *otp.Key) (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
 	logrus.Print("Enter Passcode: ")
 	text, err := reader.ReadString('\n')
@@ -37,12 +55,7 @@ func ValidateTOTP(key *otp.Key) (bool, error) {
 		logrus.Errorln(err.Error())
 		return false, err
 	}
-	valid := totp.Validate(text, key.Secret())
-	if valid {
-		return true, nil
-	} else {
-		return false, nil
-	}
+	return ValidateTOTPKey(text, key)
 }
 
 type TOTPChallenge struct {
@@ -64,20 +77,6 @@ func (t TOTPChallenge) ValidateRole(entry TOTPEntry) bool {
 	return false
 }
 
-func (t TOTPChallenge) ValidatePrimaryChallenge(entry TOTPEntry) error {
-	key, keyErr := EntryToTOTP(entry)
-	if keyErr != nil {
-		logrus.Errorln(keyErr.Error())
-		return keyErr
-	}
-
-	if !totp.Validate(t.TOTPCode, key.Secret()) {
-		return errors.New("Invalid Code")
-	}
-
-	return nil
-}
-
 func (t TOTPChallenge) NeedsSecondaryValidation(entry TOTPEntry) bool {
 	if len(entry.SecondaryAuthorization) > 0 {
 		return true
@@ -86,34 +85,22 @@ func (t TOTPChallenge) NeedsSecondaryValidation(entry TOTPEntry) bool {
 	return false
 }
 
-func (t TOTPChallenge) ValidateSecondaryChallenge(tableName string, entry TOTPEntry) error {
-	correctSecondary := false
-	for _, secondary := range entry.SecondaryAuthorization {
-		if secondary == t.SecondaryAccountName {
-			correctSecondary = true
-			break
+type ChallengePair struct {
+	Code string
+	URL  string
+}
+
+func ValidateChallengeSet(pairs []ChallengePair) error {
+	for _, pair := range pairs {
+		valid, err := ValidateTOTPURL(pair.Code, pair.URL)
+		if err != nil {
+			return err
+		}
+
+		if !valid {
+			return errors.New("Invalid passcode")
 		}
 	}
 
-	if correctSecondary {
-		secondaryEntry, getErr := GetTOTPEntry(tableName, t.Issuer, t.SecondaryAccountName)
-		if getErr != nil {
-			logrus.Errorln(getErr.Error())
-			return getErr
-		}
-
-		secondaryKey, keyErr := EntryToTOTP(secondaryEntry)
-		if keyErr != nil {
-			logrus.Errorln(keyErr.Error())
-			return keyErr
-		}
-
-		if totp.Validate(t.SecondaryTOTPCode, secondaryKey.Secret()) {
-			return nil
-		} else {
-			return errors.New("Secondary code is invalid")
-		}
-	} else {
-		return errors.New("Incorrect secondary account name")
-	}
+	return nil
 }

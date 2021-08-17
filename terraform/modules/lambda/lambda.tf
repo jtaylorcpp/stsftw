@@ -114,6 +114,7 @@ resource "aws_lambda_function" "sts_app" {
   environment {
     variables = {
       STS_TABLE_NAME = var.auth_table_name
+      STS_SNS_ARN = var.sns_arn
     }
   }
 }

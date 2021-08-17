@@ -18,6 +18,10 @@ dependency dynamo {
   config_path = "${get_parent_terragrunt_dir()}/dynamodb"
 }
 
+dependency sns {
+  config_path = "${get_parent_terragrunt_dir()}/sns_audit_notifier"
+}
+
 terraform {
   source  = "${get_parent_terragrunt_dir()}/../modules/lambda"
 }
@@ -31,4 +35,5 @@ inputs = {
     vpc_id = dependency.vpc.outputs.vpc_id
     cert_arn = dependency.cert.outputs.arn
     auth_table_name = dependency.dynamo.outputs.table_name
+    sns_arn = dependency.sns.outputs.arn
 }

@@ -51,6 +51,7 @@ var getCmd = &cobra.Command{
 			logrus.Fatalln(jsonErr.Error())
 		}
 
+		logrus.Infof("POST request endpoint set to: %s", sts.GetStringFlag("endpoint"))
 		postRequest, requestErr := http.NewRequest("POST", sts.GetStringFlag("endpoint"), bytes.NewBuffer(jsonBody))
 		if requestErr != nil {
 			logrus.Fatalln(requestErr.Error())
@@ -63,6 +64,7 @@ var getCmd = &cobra.Command{
 			logrus.Fatalln(responseErr.Error())
 		}
 
+		logrus.Infof("Recieved HTTP code: %s\n", response.Status)
 		defer response.Body.Close()
 
 		body, bodyErr := ioutil.ReadAll(response.Body)
