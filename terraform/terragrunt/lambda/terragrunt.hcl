@@ -30,6 +30,7 @@ inputs = {
     bin_path = local.app_config.bin_path
     bin_name = local.app_config.bin_name
     app_name = local.app_config.app_name
+    region = local.app_config.region
     lambda_subnets = dependency.vpc.outputs.private_subnets
     alb_subnets = dependency.vpc.outputs.public_subnets
     vpc_id = dependency.vpc.outputs.vpc_id

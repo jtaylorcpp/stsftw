@@ -32,14 +32,16 @@ func handleRequest(ctx context.Context, request events.ALBTargetGroupRequest) (e
 
 	challengeSet := []sts.ChallengePair{}
 
+	logrus.Infof("Getting entry from table %s: %s, %s", sts.GetStringFlag("table_name"), challenge.Issuer, challenge.AccountName)
 	firstEntry, getFirstEntryErr := sts.GetTOTPEntry(sts.GetStringFlag("table_name"), challenge.Issuer, challenge.AccountName)
 	if getFirstEntryErr != nil {
 		logrus.Errorln(getFirstEntryErr.Error())
 		return returnError(errors.New("Unable to find user"))
 	}
 
-	if !challenge.ValidateRole(firstEntry) {
-		returnError(errors.New("Invalid role"))
+	logrus.Infof("Validating challenge role %s against entry roles %v\n", challenge.Role, firstEntry.Roles)
+	if challenge.ValidateRole(firstEntry) == false {
+		return returnError(errors.New("Invalid role"))
 	}
 
 	challengeSet = append(challengeSet, sts.ChallengePair{challenge.TOTPCode, firstEntry.URL})
@@ -71,7 +73,7 @@ func returnBlackhole() (events.ALBTargetGroupResponse, error) {
 }
 
 func returnError(err error) (events.ALBTargetGroupResponse, error) {
-	return events.ALBTargetGroupResponse{Body: "", StatusCode: 511, StatusDescription: "511 Network Authentication Required", IsBase64Encoded: false, Headers: map[string]string{}}, err
+	return events.ALBTargetGroupResponse{Body: "", StatusCode: 500, StatusDescription: "5 Internal Server Error", IsBase64Encoded: false, Headers: map[string]string{}}, err
 }
 
 func returnCreds(challenge sts.TOTPChallenge) (events.ALBTargetGroupResponse, error) {

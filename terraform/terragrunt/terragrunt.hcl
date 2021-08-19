@@ -13,7 +13,7 @@ remote_state {
     bucket = local.app_config.tf_state_bucket
 
     key = "${path_relative_to_include()}/terraform.tfstate"
-    region         = "us-west-1"
+    region         = "${local.app_config.region}"
     encrypt        = true
   }
 }
@@ -23,7 +23,7 @@ generate "provider" {
   if_exists = "overwrite_terragrunt"
   contents = <<EOF
 provider "aws" {
-  region = "us-west-1"
+  region = "${local.app_config.region}"
 }
 EOF
 }

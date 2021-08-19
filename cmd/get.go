@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -79,5 +80,10 @@ var getCmd = &cobra.Command{
 		}
 
 		logrus.Infof("creds %#v\n", creds)
+
+		fmt.Printf("AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\nAWS_SESSION_TOKEN=%s\n",
+			creds.AccessKeyId,
+			creds.SecretAccessKey,
+			creds.SessionToken)
 	},
 }

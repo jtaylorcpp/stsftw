@@ -35,7 +35,7 @@ func EntryToTOTP(entry TOTPEntry) (*otp.Key, error) {
 
 func AddTOTPEntryToTable(tableName string, entry TOTPEntry) error {
 	sess, sessErr := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-1"),
+		Region: aws.String(GetStringFlag("region")),
 	})
 
 	if sessErr != nil {
@@ -72,7 +72,7 @@ func GetTOTPEntry(tableName, issuer, accountName string) (TOTPEntry, error) {
 	}
 
 	sess, sessErr := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-1"),
+		Region: aws.String(GetStringFlag("region")),
 	})
 
 	if sessErr != nil {
@@ -81,37 +81,62 @@ func GetTOTPEntry(tableName, issuer, accountName string) (TOTPEntry, error) {
 
 	svc := dynamodb.New(sess)
 
-	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"issuer": {
-				S: aws.String(issuer),
-			},
-			"account_name": {
-				S: aws.String(accountName),
-			},
-		},
-		TableName: aws.String(tableName),
+	filter := expression.And(
+		expression.Name("issuer").Equal(expression.Value(issuer)),
+		expression.Name("account_name").Equal(expression.Value(accountName)),
+	)
+
+	scanExpression := expression.NewBuilder().WithFilter(filter)
+	projection := expression.NamesList(
+		expression.Name("issuer"),
+		expression.Name("account_name"),
+		expression.Name("roles"),
+		expression.Name("secondary_authorization"),
+		expression.Name("url"),
+	)
+
+	expr, expressionErr := scanExpression.WithProjection(projection).Build()
+	if expressionErr != nil {
+		return TOTPEntry{}, expressionErr
 	}
 
-	result, getErr := svc.GetItem(input)
-	if getErr != nil {
-		logrus.Errorln(getErr.Error())
-		return TOTPEntry{}, getErr
+	scanInput := &dynamodb.ScanInput{
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		FilterExpression:          expr.Filter(),
+		ProjectionExpression:      expr.Projection(),
+		TableName:                 aws.String(tableName),
 	}
 
-	entry := TOTPEntry{}
-	marshallErr := dynamodbattribute.UnmarshalMap(result.Item, &entry)
-	if marshallErr != nil {
-		logrus.Errorln(marshallErr.Error())
-		return TOTPEntry{}, marshallErr
+	firstEntry := TOTPEntry{}
+	scanErr := svc.ScanPages(scanInput,
+		func(page *dynamodb.ScanOutput, lastPage bool) bool {
+			for _, result := range page.Items {
+				entry := TOTPEntry{}
+				marshallErr := dynamodbattribute.UnmarshalMap(result, &entry)
+				if marshallErr != nil {
+					logrus.Errorln(marshallErr.Error())
+					continue
+				}
+				logrus.Infof("entry: %#v\n", entry)
+				firstEntry = entry
+			}
+			return !lastPage
+		})
+
+	if scanErr != nil {
+		logrus.Errorln("Error scanning DynamoDB: ", scanErr.Error())
+		return TOTPEntry{}, scanErr
 	}
 
-	return entry, nil
+	logrus.Infof("retrieved entry %s %s %v\n", firstEntry.Issuer, firstEntry.AccountName, firstEntry.Roles)
+
+	return firstEntry, nil
 }
 
 func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) {
 	sess, sessErr := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-1"),
+		Region: aws.String(GetStringFlag("region")),
 	})
 
 	if sessErr != nil {
@@ -192,7 +217,7 @@ func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) 
 		})
 
 	if scanErr != nil {
-		logrus.Errorln("Error scanning DynamoDB: ", err.Error())
+		logrus.Errorln("Error scanning DynamoDB: ", scanErr.Error())
 		return []TOTPEntry{}, scanErr
 	}
 
@@ -201,7 +226,7 @@ func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) 
 
 func UpdateTOTPEntryRoles(tableName, issuer, accountName string, roles []string, replace bool) error {
 	sess, sessErr := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-1"),
+		Region: aws.String(GetStringFlag("region")),
 	})
 
 	if sessErr != nil {
@@ -248,7 +273,7 @@ func UpdateTOTPEntryRoles(tableName, issuer, accountName string, roles []string,
 
 func UpdateTOTPEntrySecondaryAuthorizations(tableName, issuer, accountName string, authorizations []string, replace bool) error {
 	sess, sessErr := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-1"),
+		Region: aws.String(GetStringFlag("region")),
 	})
 
 	if sessErr != nil {
@@ -295,7 +320,7 @@ func UpdateTOTPEntrySecondaryAuthorizations(tableName, issuer, accountName strin
 
 func UpdateTOTPEntryMFADevice(tableName, issuer, accountName string, key *otp.Key) error {
 	sess, sessErr := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-1"),
+		Region: aws.String(GetStringFlag("region")),
 	})
 
 	if sessErr != nil {

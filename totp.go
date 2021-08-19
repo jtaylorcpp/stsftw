@@ -68,8 +68,13 @@ type TOTPChallenge struct {
 }
 
 func (t TOTPChallenge) ValidateRole(entry TOTPEntry) bool {
+	logrus.Infof("Validating role that %s is in set %v\n", t.Role, entry.Roles)
+	if len(entry.Roles) == 0 {
+		return false
+	}
+
 	for _, role := range entry.Roles {
-		if role != t.Role {
+		if role == t.Role {
 			return true
 		}
 	}

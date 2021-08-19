@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "archive_file" "init" {
   type        = "zip"
   source_file = "${var.bin_path}${var.bin_name}"
@@ -79,6 +81,49 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc" {
   policy_arn = aws_iam_policy.lambda_vpc.arn
 }
 
+resource "aws_iam_policy" "lambda_dynamo_sts_sns" {
+  name        = "${var.app_name}_lambda_dynamo_sts_sns"
+  path        = "/"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Dynamo",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:Query"
+            ],
+            "Resource": "arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/${var.auth_table_name}"
+        },
+        {
+            "Sid": "STS",
+            "Effect": "Allow",
+            "Action": [
+              "sts:AssumeRole",
+              "sts:TagSession"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SNS",
+            "Effect": "Allow",
+            "Action": "sns:Publish",
+            "Resource": "${var.sns_arn}"
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_dynamo_sts_sns" {
+  role       = aws_iam_role.iam_for_lambda.name
+  policy_arn = aws_iam_policy.lambda_dynamo_sts_sns.arn
+}
+
 resource aws_security_group outbound {
   name        = "lambda_allow_outbound"
   vpc_id      = var.vpc_id
@@ -115,6 +160,7 @@ resource "aws_lambda_function" "sts_app" {
     variables = {
       STS_TABLE_NAME = var.auth_table_name
       STS_SNS_ARN = var.sns_arn
+      STS_REGION = var.region
     }
   }
 }

@@ -33,3 +33,7 @@ variable auth_table_name {
 variable sns_arn {
     type = string
 }
+
+variable region {
+    type = string
+}

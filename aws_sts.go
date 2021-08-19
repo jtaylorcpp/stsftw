@@ -11,7 +11,7 @@ import (
 
 func GetCredentials(issuer, accountName, role string) (STSCredentials, error) {
 	sess, sessErr := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-1"),
+		Region: aws.String(GetStringFlag("region")),
 	})
 
 	if sessErr != nil {
@@ -28,17 +28,7 @@ func GetCredentials(issuer, accountName, role string) (STSCredentials, error) {
 
 	input := &sts.AssumeRoleInput{
 		RoleArn:         aws.String(fmt.Sprintf("arn:aws:iam::%s:role/%s", *callerIdenity.Account, role)),
-		RoleSessionName: aws.String(fmt.Sprintf("%s/%s", issuer, accountName)),
-		Tags: []*sts.Tag{
-			{
-				Key:   aws.String("issuer"),
-				Value: aws.String(issuer),
-			},
-			{
-				Key:   aws.String("account_name"),
-				Value: aws.String(accountName),
-			},
-		},
+		RoleSessionName: aws.String(fmt.Sprintf("%s.%s", issuer, accountName)),
 	}
 
 	creds, assumeErr := svc.AssumeRole(input)
