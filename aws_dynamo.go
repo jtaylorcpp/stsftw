@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 
 	"github.com/pquerna/otp"
-	"github.com/sirupsen/logrus"
 )
 
 type TOTPEntry struct {
@@ -34,6 +33,8 @@ func EntryToTOTP(entry TOTPEntry) (*otp.Key, error) {
 }
 
 func AddTOTPEntryToTable(tableName string, entry TOTPEntry) error {
+	logger.Trace().Str("issuer", entry.Issuer).Str("account_name", entry.AccountName).Strs("roles", entry.Roles).Msg("Getting AWS credentials")
+
 	sess, sessErr := session.NewSession(&aws.Config{
 		Region: aws.String(GetStringFlag("region")),
 	})
@@ -46,7 +47,7 @@ func AddTOTPEntryToTable(tableName string, entry TOTPEntry) error {
 
 	av, err := dynamodbattribute.MarshalMap(entry)
 	if err != nil {
-		logrus.Errorf("Got error marshalling new movie item: %s", err)
+		logger.Error().Err(err).Msg("Error unmarshaling entrty")
 		return err
 	}
 
@@ -55,11 +56,9 @@ func AddTOTPEntryToTable(tableName string, entry TOTPEntry) error {
 		TableName: aws.String(tableName),
 	}
 
-	logrus.Infof("Adding entry %#v to table %s\n", av, tableName)
-
 	_, err = svc.PutItem(input)
 	if err != nil {
-		logrus.Fatalf("Got error calling PutItem: %s", err)
+		logger.Error().Err(err).Msg("Error writting item to dynamodb")
 		return err
 	}
 
@@ -70,6 +69,8 @@ func GetTOTPEntry(tableName, issuer, accountName string) (TOTPEntry, error) {
 	if tableName == "" || issuer == "" || accountName == "" {
 		return TOTPEntry{}, errors.New("TableName, Issuer, or Account Name are missing for get operation")
 	}
+
+	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Str("table", tableName).Msg("Getting AWS credentials")
 
 	sess, sessErr := session.NewSession(&aws.Config{
 		Region: aws.String(GetStringFlag("region")),
@@ -115,26 +116,24 @@ func GetTOTPEntry(tableName, issuer, accountName string) (TOTPEntry, error) {
 				entry := TOTPEntry{}
 				marshallErr := dynamodbattribute.UnmarshalMap(result, &entry)
 				if marshallErr != nil {
-					logrus.Errorln(marshallErr.Error())
 					continue
 				}
-				logrus.Infof("entry: %#v\n", entry)
 				firstEntry = entry
 			}
 			return !lastPage
 		})
 
 	if scanErr != nil {
-		logrus.Errorln("Error scanning DynamoDB: ", scanErr.Error())
+		logger.Error().Err(scanErr).Msg("Error scanning dynamo")
 		return TOTPEntry{}, scanErr
 	}
-
-	logrus.Infof("retrieved entry %s %s %v\n", firstEntry.Issuer, firstEntry.AccountName, firstEntry.Roles)
 
 	return firstEntry, nil
 }
 
 func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) {
+	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Str("table", tableName).Msg("Getting AWS credentials")
+
 	sess, sessErr := session.NewSession(&aws.Config{
 		Region: aws.String(GetStringFlag("region")),
 	})
@@ -188,7 +187,7 @@ func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) 
 	expr, err := scanExpression.WithProjection(projection).Build()
 
 	if err != nil {
-		logrus.Errorln("Error creating DynamoDB expression: ", err.Error())
+		logger.Error().Err(err).Msg("Error creating dynamo expression")
 		return []TOTPEntry{}, err
 	}
 
@@ -207,17 +206,15 @@ func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) 
 				entry := TOTPEntry{}
 				marshallErr := dynamodbattribute.UnmarshalMap(result, &entry)
 				if marshallErr != nil {
-					logrus.Errorln(marshallErr.Error())
 					continue
 				}
 				totpEntries = append(totpEntries, entry)
-				logrus.Debugf("entry: %#v\n", entry)
 			}
 			return !lastPage
 		})
 
 	if scanErr != nil {
-		logrus.Errorln("Error scanning DynamoDB: ", scanErr.Error())
+		logger.Error().Err(err).Msg("Error scanning dynamo")
 		return []TOTPEntry{}, scanErr
 	}
 
@@ -225,6 +222,8 @@ func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) 
 }
 
 func UpdateTOTPEntryRoles(tableName, issuer, accountName string, roles []string, replace bool) error {
+	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Strs("roles", roles).Str("table", tableName).Msg("Getting AWS credentials")
+
 	sess, sessErr := session.NewSession(&aws.Config{
 		Region: aws.String(GetStringFlag("region")),
 	})
@@ -242,7 +241,7 @@ func UpdateTOTPEntryRoles(tableName, issuer, accountName string, roles []string,
 
 	expr, err := expression.NewBuilder().WithUpdate(update).Build()
 	if err != nil {
-		logrus.Errorf(err.Error())
+		logger.Error().Err(err).Msg("Error building dynamo expression")
 		return err
 	}
 
@@ -264,7 +263,7 @@ func UpdateTOTPEntryRoles(tableName, issuer, accountName string, roles []string,
 	_, updateErr := svc.UpdateItem(input)
 
 	if updateErr != nil {
-		logrus.Errorln(updateErr.Error())
+		logger.Error().Err(updateErr).Msg("Error updating dynamo item")
 		return updateErr
 	}
 
@@ -272,6 +271,8 @@ func UpdateTOTPEntryRoles(tableName, issuer, accountName string, roles []string,
 }
 
 func UpdateTOTPEntrySecondaryAuthorizations(tableName, issuer, accountName string, authorizations []string, replace bool) error {
+	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Str("table", tableName).Strs("authorizers", authorizations).Msg("Getting AWS credentials")
+
 	sess, sessErr := session.NewSession(&aws.Config{
 		Region: aws.String(GetStringFlag("region")),
 	})
@@ -289,7 +290,7 @@ func UpdateTOTPEntrySecondaryAuthorizations(tableName, issuer, accountName strin
 
 	expr, err := expression.NewBuilder().WithUpdate(update).Build()
 	if err != nil {
-		logrus.Errorf(err.Error())
+		logger.Error().Err(err).Msg("Error creating dynamo expression")
 		return err
 	}
 
@@ -311,7 +312,7 @@ func UpdateTOTPEntrySecondaryAuthorizations(tableName, issuer, accountName strin
 	_, updateErr := svc.UpdateItem(input)
 
 	if updateErr != nil {
-		logrus.Errorln(updateErr.Error())
+		logger.Error().Err(updateErr).Msg("Error updating dynamo item")
 		return updateErr
 	}
 
@@ -319,6 +320,8 @@ func UpdateTOTPEntrySecondaryAuthorizations(tableName, issuer, accountName strin
 }
 
 func UpdateTOTPEntryMFADevice(tableName, issuer, accountName string, key *otp.Key) error {
+	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Msg("Getting AWS credentials")
+
 	sess, sessErr := session.NewSession(&aws.Config{
 		Region: aws.String(GetStringFlag("region")),
 	})
@@ -336,7 +339,7 @@ func UpdateTOTPEntryMFADevice(tableName, issuer, accountName string, key *otp.Ke
 
 	expr, err := expression.NewBuilder().WithUpdate(update).Build()
 	if err != nil {
-		logrus.Errorf(err.Error())
+		logger.Error().Err(err).Msg("Error building dynamo expression")
 		return err
 	}
 
@@ -358,7 +361,7 @@ func UpdateTOTPEntryMFADevice(tableName, issuer, accountName string, key *otp.Ke
 	_, updateErr := svc.UpdateItem(input)
 
 	if updateErr != nil {
-		logrus.Errorln(updateErr.Error())
+		logger.Error().Err(updateErr).Msg("Error updating dynamo item")
 		return updateErr
 	}
 

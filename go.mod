@@ -21,6 +21,7 @@ require (
 	github.com/pquerna/otp v1.3.0 // indirect
 	github.com/prometheus/client_golang v0.9.3 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
+	github.com/rs/zerolog v1.23.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/soheilhy/cmux v0.1.4 // indirect

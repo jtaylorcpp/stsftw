@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/sirupsen/logrus"
 )
 
 func GetCredentials(issuer, accountName, role string) (STSCredentials, error) {
+	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Str("role", role).Msg("Getting AWS credentials")
 	sess, sessErr := session.NewSession(&aws.Config{
 		Region: aws.String(GetStringFlag("region")),
 	})
@@ -22,7 +22,7 @@ func GetCredentials(issuer, accountName, role string) (STSCredentials, error) {
 
 	callerIdenity, identityErr := svc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if identityErr != nil {
-		logrus.Errorln(identityErr.Error())
+		logger.Error().Err(identityErr).Msg("Error calling GetCallerIdentity")
 		return STSCredentials{}, identityErr
 	}
 
@@ -33,7 +33,7 @@ func GetCredentials(issuer, accountName, role string) (STSCredentials, error) {
 
 	creds, assumeErr := svc.AssumeRole(input)
 	if assumeErr != nil {
-		logrus.Errorln(assumeErr.Error())
+		logger.Error().Err(assumeErr).Msg("Error assuming role")
 		return STSCredentials{}, assumeErr
 	}
 

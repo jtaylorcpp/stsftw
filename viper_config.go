@@ -22,6 +22,8 @@ func init() {
 	config.BindEnv("secondary_authorizers")
 	config.BindEnv("sns_arn")
 	config.BindEnv("region")
+	config.BindEnv("log_level")
+	config.SetDefault("log_level", "warn")
 }
 
 func Bind(configName string, flag *pflag.Flag) {

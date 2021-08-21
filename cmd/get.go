@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jtaylorcpp/sts"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +29,8 @@ var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get AWS STS credentials from STS",
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Infoln("Getting STS creds")
+		logger := sts.GetLogger()
+		logger.Info().Msg("Getting STS credentials")
 		challenge := sts.TOTPChallenge{
 			Issuer:               sts.GetStringFlag("issuer"),
 			AccountName:          sts.GetStringFlag("account_name"),
@@ -40,7 +40,7 @@ var getCmd = &cobra.Command{
 			Role:                 sts.GetStringFlag("role"),
 		}
 
-		logrus.Infof("Challenge for STS: %#v\n", challenge)
+		logger.Info().Msg(fmt.Sprintf("Challenge for STS: %#v\n", challenge))
 
 		apiTimeout := time.Duration(time.Minute)
 		apiclient := http.Client{
@@ -49,37 +49,33 @@ var getCmd = &cobra.Command{
 
 		jsonBody, jsonErr := json.Marshal(&challenge)
 		if jsonErr != nil {
-			logrus.Fatalln(jsonErr.Error())
+			logger.Fatal().Err(jsonErr).Msg("Failed to create json event to get STS creds")
 		}
 
-		logrus.Infof("POST request endpoint set to: %s", sts.GetStringFlag("endpoint"))
 		postRequest, requestErr := http.NewRequest("POST", sts.GetStringFlag("endpoint"), bytes.NewBuffer(jsonBody))
 		if requestErr != nil {
-			logrus.Fatalln(requestErr.Error())
+			logger.Fatal().Err(requestErr).Msg("Error creating POST request to get STS creds")
 		}
 
 		postRequest.Header.Set("Content-Type", "application/json")
 
 		response, responseErr := apiclient.Do(postRequest)
 		if responseErr != nil {
-			logrus.Fatalln(responseErr.Error())
+			logger.Fatal().Err(responseErr).Msg("Error in response from POST to STS API")
 		}
 
-		logrus.Infof("Recieved HTTP code: %s\n", response.Status)
 		defer response.Body.Close()
 
 		body, bodyErr := ioutil.ReadAll(response.Body)
 		if bodyErr != nil {
-			logrus.Fatalln(bodyErr.Error())
+			logger.Fatal().Err(bodyErr).Msg("Unable to open response body")
 		}
 
 		creds := sts.STSCredentials{}
 		unmarshallErr := json.Unmarshal(body, &creds)
 		if unmarshallErr != nil {
-			logrus.Fatalln(unmarshallErr.Error())
+			logger.Fatal().Err(unmarshallErr).Msg("Unable to unmarshal JSON response")
 		}
-
-		logrus.Infof("creds %#v\n", creds)
 
 		fmt.Printf("AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\nAWS_SESSION_TOKEN=%s\n",
 			creds.AccessKeyId,
