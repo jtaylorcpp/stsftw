@@ -12,6 +12,7 @@ import (
 )
 
 func GenerateNewTOTP(issuer, accountName string) (*otp.Key, error) {
+	logger := GetLogger()
 	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Msg("Creating new TOTP entry")
 	return totp.Generate(totp.GenerateOpts{
 		Issuer:      issuer,
@@ -20,7 +21,9 @@ func GenerateNewTOTP(issuer, accountName string) (*otp.Key, error) {
 }
 
 func DisplayTOTPQR(key *otp.Key) error {
-	logger.Trace().Str("issuer", key.Issuer()).Str("account_name", key.AccountName()).Msg("Displaying QR code to enroll MFA device")
+	logger := GetLogger()
+	logger.WithKey(key)
+	logger.Trace().Msg("Displaying QR code to enroll MFA device")
 	qrterminal.GenerateWithConfig(key.URL(), qrterminal.Config{
 		Level:     qrterminal.H,
 		Writer:    os.Stdout,
@@ -31,39 +34,49 @@ func DisplayTOTPQR(key *otp.Key) error {
 }
 
 func ValidateTOTPKey(code string, key *otp.Key) bool {
-	logger.Trace().Str("issuer", key.Issuer()).Str("account_name", key.AccountName()).Msg("Validating TOTP code")
+	logger := GetLogger()
+	logger.WithKey(key)
+	logger.Trace().Msg("Validating TOTP code")
 	valid := totp.Validate(code, key.Secret())
 	if valid {
-		logger.Trace().Str("issuer", key.Issuer()).Str("account_name", key.AccountName()).Msg("Valid TOTP code")
+		logger.WithKey(key)
+		logger.Trace().Msg("Valid TOTP code")
 		return true
 	} else {
-		logger.Warn().Str("issuer", key.Issuer()).Str("account_name", key.AccountName()).Msg("Invalid TOTP code")
+		logger.WithKey(key)
+		logger.Warn().Msg("Invalid TOTP code")
 		return false
 	}
 }
 
 func ValidateTOTPURL(code, url string) (bool, error) {
+	logger := GetLogger()
 	logger.Trace().Msg("Parsing TOTP key from URL")
 	key, keyErr := otp.NewKeyFromURL(url)
 	if keyErr != nil {
 		logger.Error().Str("keyErr", keyErr.Error()).Msg("Error parsing TOTP key from URL")
 		return false, keyErr
 	}
-	logger.Trace().Str("issuer", key.Issuer()).Str("account_name", key.AccountName()).Msg("Parsed TOTP key from URL")
+	logger.WithKey(key)
+	logger.Trace().Msg("Parsed TOTP key from URL")
 
 	return ValidateTOTPKey(code, key), nil
 }
 
 func ValidateTOTPFromCLI(key *otp.Key) (bool, error) {
-	logger.Trace().Str("issuer", key.Issuer()).Str("account_name", key.AccountName()).Msg("Reading passcode in from CLI")
+	logger := GetLogger()
+	logger.WithKey(key)
+	logger.Trace().Msg("Reading passcode in from CLI")
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter Passcode: ")
 	text, err := reader.ReadString('\n')
 	if err != nil {
-		logger.Error().Str("issuer", key.Issuer()).Str("account_name", key.AccountName()).Msg("Unable to read passcode from CLI")
+		logger.WithKey(key)
+		logger.Error().Msg("Unable to read passcode from CLI")
 		return false, err
 	}
-	logger.Trace().Str("issuer", key.Issuer()).Str("account_name", key.AccountName()).Msg("Passcode read from CLI")
+	logger.WithKey(key)
+	logger.Trace().Msg("Passcode read from CLI")
 	return ValidateTOTPKey(text, key), nil
 }
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/jtaylorcpp/sts"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -19,38 +21,36 @@ var enrollCmd = &cobra.Command{
 	Use:   "enroll",
 	Short: "Enroll your device in STS",
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Infof("Enrolling new device in STS with issuer <%s> and account name <%s>\n", sts.GetStringFlag("issuer"), sts.GetStringFlag("account_name"))
+		logger := sts.GetLogger()
+		logger.Info().Msgf("Enrolling new device")
 		key, err := sts.GenerateNewTOTP(sts.GetStringFlag("issuer"), sts.GetStringFlag("account_name"))
 		if err != nil {
-			logrus.Errorln(err.Error())
+			logger.Error().Err(err)
 		}
-		logrus.Infoln(key.String())
 
 		err = sts.DisplayTOTPQR(key)
 		if err != nil {
-			logrus.Errorln(err.Error())
+			logger.Error().Err(err)
 		}
 
 		score := 0
 		for score <= 1 {
-			logrus.Debugf("%v successful attempts of 2 needed\n", score)
-			logrus.Infoln("Validate TOTP enrollment")
+			fmt.Println("Validate TOTP enrollment")
 			var valid bool
-			valid, err = sts.ValidateTOTPFromCLI
+			valid, err = sts.ValidateTOTPFromCLI(key)
 
-			(key)
 			if err != nil {
-				logrus.Errorln(err.Error())
+				logger.Error().Err(err)
 			}
 			if !valid {
-				logrus.Errorln("incorrect code entered")
+				logger.Error().Err(err)
 			} else {
 				score += 1
-				logrus.Infoln("Code accepted")
+				fmt.Println("Code accepted")
 			}
 		}
 
-		logrus.Infoln("TOTP enrolled and verified")
+		fmt.Println("TOTP enrolled and verified")
 
 		tableEntry, entryErr := sts.NewTOTPEntry(key)
 		if entryErr != nil {
