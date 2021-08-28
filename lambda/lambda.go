@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/jtaylorcpp/sts"
@@ -17,29 +15,33 @@ func main() {
 }
 
 func handleRequest(ctx context.Context, request events.ALBTargetGroupRequest) (events.ALBTargetGroupResponse, error) {
+	logger := sts.GetLogger()
 	// check if body is the struct we expect
 	challenge := sts.TOTPChallenge{}
 	jsonErr := json.Unmarshal([]byte(request.Body), &challenge)
 	// if there are any errors or there is no issuer/passcode reject
 	if jsonErr != nil || challenge.Issuer == "" || challenge.AccountName == "" || challenge.Role == "" {
 		if jsonErr != nil {
-			logrus.Errorln(jsonErr.Error())
+			logger.Err(jsonErr).Msg("Unable to unmarshall client request")
 		}
-		logrus.Println("Blackholing response")
+		logger.Info().Msg("Blackholing response")
 		// blackhole
 		return returnBlackhole()
 	}
 
 	challengeSet := []sts.ChallengePair{}
+	logger.WithChallenge(challenge)
+	logger.Info().Str("table", sts.GetStringFlag("table_name")).Msg("getting entry from table")
 
-	logrus.Infof("Getting entry from table %s: %s, %s", sts.GetStringFlag("table_name"), challenge.Issuer, challenge.AccountName)
 	firstEntry, getFirstEntryErr := sts.GetTOTPEntry(sts.GetStringFlag("table_name"), challenge.Issuer, challenge.AccountName)
 	if getFirstEntryErr != nil {
-		logrus.Errorln(getFirstEntryErr.Error())
+		logger.Err(getFirstEntryErr).Msg("Unable to find user")
 		return returnError(errors.New("Unable to find user"))
 	}
 
-	logrus.Infof("Validating challenge role %s against entry roles %v\n", challenge.Role, firstEntry.Roles)
+	logger.WithChallenge(challenge)
+	logger.WithEntry(firstEntry)
+	logger.Info().Msg("Validating challenge role against entry")
 	if challenge.ValidateRole(firstEntry) == false {
 		return returnError(errors.New("Invalid role"))
 	}
@@ -49,7 +51,8 @@ func handleRequest(ctx context.Context, request events.ALBTargetGroupRequest) (e
 	if challenge.NeedsSecondaryValidation(firstEntry) {
 		secondEntry, getSecondEntryErr := sts.GetTOTPEntry(sts.GetStringFlag("table_name"), challenge.Issuer, challenge.SecondaryAccountName)
 		if getSecondEntryErr != nil {
-			logrus.Errorln(getSecondEntryErr.Error())
+			logger.WithChallenge(challenge)
+			logger.Err(getSecondEntryErr).Msg("Error getting secondary auth")
 			return returnError(errors.New("Unable to find user(secondary)"))
 		}
 
@@ -58,7 +61,9 @@ func handleRequest(ctx context.Context, request events.ALBTargetGroupRequest) (e
 
 	challengeErr := sts.ValidateChallengeSet(challengeSet)
 	if challengeErr != nil {
-		logrus.Errorln(challengeErr.Error())
+		logger.WithChallenge(challenge)
+		logger.WithEntry(firstEntry)
+		logger.Err(challengeErr).Msg("Unable to validate both codes")
 		return returnError(errors.New("Unable to validate codes"))
 	}
 
@@ -77,23 +82,27 @@ func returnError(err error) (events.ALBTargetGroupResponse, error) {
 }
 
 func returnCreds(challenge sts.TOTPChallenge) (events.ALBTargetGroupResponse, error) {
+	logger := sts.GetLogger()
 	// make call to audit notifier first
 	publishErr := sts.PublishAuditEvent(challenge.Issuer, challenge.AccountName, challenge.Role)
 	if publishErr != nil {
-		logrus.Errorln(publishErr.Error())
+		logger.WithChallenge(challenge)
+		logger.Err(publishErr).Msg("Unable to publish cred minting notification")
 		return returnError(errors.New("Unable to publish audit event"))
 	}
 
 	// then mint creds
 	creds, err := sts.GetCredentials(challenge.Issuer, challenge.AccountName, challenge.Role)
 	if err != nil {
-		logrus.Errorln(err.Error())
+		logger.WithChallenge(challenge)
+		logger.Err(err).Msg("Uable to mint credentials")
 		return returnError(err)
 	}
 
 	jsonBytes, jsonErr := json.Marshal(&creds)
 	if jsonErr != nil {
-		logrus.Errorln(jsonErr.Error())
+		logger.WithChallenge(challenge)
+		logger.Err(jsonErr).Msg("Unable to marshall credentials")
 		return returnError(jsonErr)
 	}
 

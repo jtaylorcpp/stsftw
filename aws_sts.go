@@ -9,6 +9,7 @@ import (
 )
 
 func GetCredentials(issuer, accountName, role string) (STSCredentials, error) {
+	logger := GetLogger()
 	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Str("role", role).Msg("Getting AWS credentials")
 	sess, sessErr := session.NewSession(&aws.Config{
 		Region: aws.String(GetStringFlag("region")),

@@ -9,6 +9,7 @@ import (
 )
 
 func PublishAuditEvent(issuer, accountName, role string) error {
+	logger := GetLogger()
 	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Str("role", role).Msg("Getting AWS credentials")
 
 	sess, sessErr := session.NewSession(&aws.Config{

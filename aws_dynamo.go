@@ -33,6 +33,7 @@ func EntryToTOTP(entry TOTPEntry) (*otp.Key, error) {
 }
 
 func AddTOTPEntryToTable(tableName string, entry TOTPEntry) error {
+	logger := GetLogger()
 	logger.Trace().Str("issuer", entry.Issuer).Str("account_name", entry.AccountName).Strs("roles", entry.Roles).Msg("Getting AWS credentials")
 
 	sess, sessErr := session.NewSession(&aws.Config{
@@ -66,6 +67,7 @@ func AddTOTPEntryToTable(tableName string, entry TOTPEntry) error {
 }
 
 func GetTOTPEntry(tableName, issuer, accountName string) (TOTPEntry, error) {
+	logger := GetLogger()
 	if tableName == "" || issuer == "" || accountName == "" {
 		return TOTPEntry{}, errors.New("TableName, Issuer, or Account Name are missing for get operation")
 	}
@@ -132,6 +134,7 @@ func GetTOTPEntry(tableName, issuer, accountName string) (TOTPEntry, error) {
 }
 
 func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) {
+	logger := GetLogger()
 	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Str("table", tableName).Msg("Getting AWS credentials")
 
 	sess, sessErr := session.NewSession(&aws.Config{
@@ -222,6 +225,7 @@ func GetTOTPEntries(tableName, issuer, accountName string) ([]TOTPEntry, error) 
 }
 
 func UpdateTOTPEntryRoles(tableName, issuer, accountName string, roles []string, replace bool) error {
+	logger := GetLogger()
 	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Strs("roles", roles).Str("table", tableName).Msg("Getting AWS credentials")
 
 	sess, sessErr := session.NewSession(&aws.Config{
@@ -271,6 +275,7 @@ func UpdateTOTPEntryRoles(tableName, issuer, accountName string, roles []string,
 }
 
 func UpdateTOTPEntrySecondaryAuthorizations(tableName, issuer, accountName string, authorizations []string, replace bool) error {
+	logger := GetLogger()
 	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Str("table", tableName).Strs("authorizers", authorizations).Msg("Getting AWS credentials")
 
 	sess, sessErr := session.NewSession(&aws.Config{
@@ -320,6 +325,7 @@ func UpdateTOTPEntrySecondaryAuthorizations(tableName, issuer, accountName strin
 }
 
 func UpdateTOTPEntryMFADevice(tableName, issuer, accountName string, key *otp.Key) error {
+	logger := GetLogger()
 	logger.Trace().Str("issuer", issuer).Str("account_name", accountName).Msg("Getting AWS credentials")
 
 	sess, sessErr := session.NewSession(&aws.Config{
