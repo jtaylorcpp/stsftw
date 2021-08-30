@@ -32,35 +32,13 @@ These AWS STS creds are provided by a AWS Lambda, AWS ALB setup in which (for th
 
 ### Infrastructure
 
-#### DynamoDB
+Description of app.yml
 
-Create a DynamoDB table with a Partition key of *issuer*(string) and a Sort key of *account_name*(string). 
+Where to place
 
-This can be done by hand or by the Terraform module is this repo located at `terraform/modules/dynamodb`.
+How to run terragrunt
 
-#### ACM Certificate
-
-Create an ACM Certificate to be used by the AWS ALB fronting the AWS Lambda.
-
-This can be done manually or with the module at `terraform/modules/r53_acm`. This module will create a certificate for a specified domain name and will use the DNS certificate challenge through the Route53 integration.
-
-#### VPC (optional)
-
-Provision an AWS VPC with public and private subnets. There are many ways to do this and no real solution is prescribed.
-
-However, the terragrunt example in this repo uses a well known and documented AWS VPC module.
-
-#### Lambda and Application Load Balancer
-
-Create a Lambda for serving as the API backend with and Application Load Balancer to front it. The ALB shouldbe public and reside in the public subnet and the Lambda should be integrated with the VPC and exists in the private subnet.
-
-For this specific application, it is recommeded to use the provided module at `terraform/modules/lambda`. If you end up using the terragrunt project in this repo, then the Makefile can be used as well (which includes Go build steps).
-
-This module will link the certificate created earlier and output the domain name of the ALB created.
-
-#### Create CNAME record
-
-Using the ALB domain name before, create a CNAME (or ALIAS) records in your providers DNS zone. This record must use the primary or one of the subject alternative names from the certificate created in the previous steps.
+Requirements before running
 
 ### Application Setup
 
