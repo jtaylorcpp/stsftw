@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
+	"github.com/jtaylorcpp/sts"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +26,8 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		logrus.Errorln(err.Error())
+		logger := sts.GetLogger()
+		logger.Err(err).Msg("Error executing cli")
 	}
 }
 

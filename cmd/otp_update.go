@@ -26,10 +26,13 @@ var rolesCmd = &cobra.Command{
 	Use:   "roles",
 	Short: "Update the roles for a given issuer/account name",
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Debugln("Updating roles for <issuer><account name>")
+		logger := sts.GetLogger()
+		logger.Debug().Str("issuer", sts.GetStringFlag("issuer")).
+			Str("account_name", sts.GetStringFlag("account_name")).
+			Msg("Updating roles")
 		err := sts.UpdateTOTPEntryRoles(stsTableName, stsIssuer, stsAccountName, stsRoles, false)
 		if err != nil {
-			logrus.Errorln(err.Error())
+			logger.Err(err).Msg("Error updating roles")
 		}
 	},
 }
@@ -38,10 +41,13 @@ var authorizersCmd = &cobra.Command{
 	Use:   "authorizers",
 	Short: "Update the authorizers for a given issuer/account name",
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Debugln("Updating authorizers for <issuer><account name>")
+		logger := sts.GetLogger()
+		logger.Debug().Str("issuer", sts.GetStringFlag("issuer")).
+			Str("account_name", sts.GetStringFlag("account_name")).
+			Msg("Updating secondary authorizers")
 		err := sts.UpdateTOTPEntrySecondaryAuthorizations(stsTableName, stsIssuer, stsAccountName, stsSecondaryAuthorizers, false)
 		if err != nil {
-			logrus.Errorln(err.Error())
+			logger.Err(err).Msg("Error updating secondary authorizers")
 		}
 	},
 }
@@ -50,21 +56,24 @@ var deviceCmd = &cobra.Command{
 	Use:   "device",
 	Short: "Update the device used for a given issuer/account name",
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Debugln("Updating device for <issuer><account name>")
+		logger := sts.GetLogger()
+		logger.Debug().Str("issuer", sts.GetStringFlag("issuer")).
+			Str("account_name", sts.GetStringFlag("account_name")).
+			Msg("Updating device")
 		key, err := sts.GenerateNewTOTP(stsIssuer, stsAccountName)
 		if err != nil {
-			logrus.Errorln(err.Error())
+			logger.Err(err).Msg("Error generating new OTP key")
 		}
 
 		err = sts.DisplayTOTPQR(key)
 		if err != nil {
-			logrus.Errorln(err.Error())
+			logger.Err(err).Msg("Error displaying new OTP key")
 		}
 
 		score := 0
 		for score <= 1 {
-			logrus.Debugf("%v successful attempts of 2 needed\n", score)
-			logrus.Infoln("Validate TOTP enrollment")
+			logger.Debug().Int("score", score).Msg("Current valid messages")
+			logger.Print("Enter code to validate OTP code")
 			var valid bool
 			valid, err = sts.ValidateTOTPFromCLI(key)
 			if err != nil {

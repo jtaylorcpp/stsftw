@@ -1,0 +1,28 @@
+title STS For The Win
+
+actor App Admin
+actor User
+database DynamoDB
+
+
+App Admin -> DynamoDB : Out of Band User Management (AWS API)
+
+note over App Admin,DynamoDB: Admin enrolls User in DynamoDB auth table 
+
+User <-> AWS Lambda: Sends JSON request for AWS STS creds
+
+AWS Lambda <-> DynamoDB: Gets User entry/record/item
+
+note over AWS Lambda: Check if User specified Role is in entry
+
+note over AWS Lambda: Check if User needs secondary approver 
+
+AWS Lambda <-->DynamoDB: Retrieved specified Secondary User (if nessecary) entry/record/item
+
+note over AWS Lambda: Validate User (and Secondary User) OTP codes
+
+AWS Lambda -> AWS STS: Retrieve credentials for Role specified by the User
+
+AWS Lambda -> AWS SNS: Notify App Admin of minting of crednetials for <User,Role>
+
+AWS Lambda ->User: Send STS Credentials for specified Role back 
