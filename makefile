@@ -15,13 +15,13 @@ deploy_lambda: build_lambda
 
 deploy: build_lambda
 	cd terraform/terragrunt && \
-	terragrunt apply-all
+	terragrunt run-all apply
 
 clean_builds: 
 	rm -rf builds
 
 clean_terraform:
 	cd terraform/terragrunt && \
-	terragrunt destroy-all
+	terragrunt run-all destroy
 
-	
+clean: clean_terraform clean_builds

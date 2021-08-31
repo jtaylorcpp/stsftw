@@ -32,9 +32,33 @@ These AWS STS creds are provided by a AWS Lambda, AWS ALB setup in which (for th
 
 ### Infrastructure
 
-Description of app.yml
+#### Create YAML Config for Terragrunt Deployment
 
-Where to place
+```yaml
+bin_path: <path to this projects build dir or where the bins are stored>
+bin_name: <name of the binary to use for the lambda>
+app_name: <name of application - will be used for AWS resource naming>
+zone: <the Route53 zone to use to create certificates and add A/CNAME/ALIAS records to>
+domain: <the domain name created in Route53 that points to the ALB>
+dynamo_table_name: <name of the DynamoDB table to create and use for auth>
+tf_state_bucket: <S3 bucker name for terraform/terragrunt state>
+email: <email address to send audit notifications to>
+region: <AWS region to deploy to>
+```
+
+The above yaml content can be used to create a new yaml configuration file at `<repo root>/terraform/terragrunt/app.yml`.
+
+#### Deploy
+
+```sh
+make deploy
+```
+
+
+
+
+
+
 
 How to run terragrunt
 
