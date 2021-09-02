@@ -147,7 +147,8 @@ resource "aws_lambda_function" "sts_app" {
   # The filebase64sha256() function is available in Terraform 0.11.12 and later
   # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
   # source_code_hash = "${base64sha256(file("lambda_function_payload.zip"))}"
-  source_code_hash = filebase64sha256("${var.bin_path}${var.bin_name}.zip")
+  source_code_hash = data.archive_file.init.output_base64sha256
+
 
   runtime = "go1.x"
 

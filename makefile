@@ -5,7 +5,8 @@ build_lambda: build_dir
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o builds/sts-lambda lambda/*.go
 
 build_local_bin: build_dir
-	CGO_ENABLED=0 go build -o ./builds/sts cmd/*.go	
+	CGO_ENABLED=0 go build -o ./builds/sts_local cmd/*.go
+	sudo mv ./builds/sts_local /usr/local/bin/sts	
 
 build: build_lambda
 

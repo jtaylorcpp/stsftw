@@ -28,7 +28,36 @@ Once the authorization table has been updated and a user enrolled, the user can 
 
 These AWS STS creds are provided by a AWS Lambda, AWS ALB setup in which (for the example case in this repo) has an AWS Route53 entry. This allows for clients to be able to access the API via HTTPS and have a privileged AWS Lambda do the AWS STS call to provide the creds.
 
+### Sequence Diagram of Protocol
+
+![](docs/STSFTW_Sequence_Diagram.png)
+
 ## Getting Started
+
+### Prerequisites
+
+1. An AWS account in which you have permissions for:
+    - SNS
+    - EC2/VPC
+    - Lambda
+    - Route53
+    - ACM
+    - DynamoDB
+    - IAM
+
+1. A Zone in Route53 that you have access to
+
+1. Go installed on your local system (or wherever you are building this)
+
+1. AWS CLI installed and active credentials (still need bootstrapping creds)
+
+1. A designated Admin for the application
+
+1. Make installed
+
+1. Terrafform 1.0.0+ installed
+
+1. Terragrunt installed
 
 ### Infrastructure
 
@@ -54,17 +83,73 @@ The above yaml content can be used to create a new yaml configuration file at `<
 make deploy
 ```
 
+This step will build and provision all of the necessary resources to run the project. It will build a golang based binary for the lambda and directly upload it when provisioning in AWS.
 
+*NOTE*: Once this deploy is finished you will need to check the provided email to enroll in the SNS notifications.
 
+#### Getting a Local Binary
 
+```sh
+make build_local_bin
+```
 
+You will need `sudo` privileges to be able to run this command as it will try and place the newly created binary in `/usr/local/bin`.
 
+### Adding Users
 
-How to run terragrunt
+#### Admin User
 
-Requirements before running
+It is recommended to create an Admin user that has no roles assigned to them. This way there is one privileged account with STSFTW that can solely be used for Multi-Party Authentication and nothing else.
 
-### Application Setup
+To create this admin user, run:
+
+```sh
+sts enroll --account-name admin --issuer $STS_ISSUER --table-name $STS_TABLE_NAME
+```
+
+Once this user has been created, we can use it to be the Multi-Party Authentication user for a user with admin priveleges.
+
+#### First User
+
+As mentioned above, we'll create a user that has an administrative role assigned.
+
+For this example, we created a IAM Role `AccountAdmin` with the AWS managed policy `AdministratorAccess` attached.
+
+```sh
+sts enroll --account-name account-admin  --table-name $STS_TABLE_NAME --issuer $STS_ISSUER --roles AccountAdmin --secondary-authorizers admin
+```
+
+The IAM Role doesn't need to exist when enrolling users but will need to exist when getting credentials for the first time.
+
+To get credentials for this user:
+
+```sh
+sts get --account-name account-admin --secondary-authorizer admin --endpoint $STS_ENDPOINT --issuer $STS_ISSUER --role AccountAdmin --totp-code 111111 --secondary-totp-code 222222
+```
+
+If this is successful, you'll get a printout of the credentials:
+
+```sh
+export AWS_ACCESS_KEY_ID=XXXXXXXXXX
+export AWS_SECRET_ACCESS_KEY=XXXXXXXXXX
+export AWS_SESSION_TOKEN=XXXXXXXXXX
+```
+
+You can also exec the command to directly export the creds to your current session:
+
+```sh
+$(sts get --account-name account-admin --secondary-authorizer admin --endpoint $STS_ENDPOINT --issuer $STS_ISSUER --role AccountAdmin --totp-code 111111 --secondary-totp-code 222222)
+```
+
+And, you should get an email showing this transaction happened:
+
+```
+STSFTW has minted new STS crentials:
+Issuer: Some Account
+Account Name: account-admin
+AWS Role: AccountAdmin
+
+```
 
 #### ENV Vars and CLI Args
 
@@ -83,30 +168,9 @@ The STS client can be configured with both flags and ENV vars. Setting the ENV v
 || totp-code | TOTP code from an enrolled device (primary). |
 || secondary-totp-code | TOTP code from an enrolled device (secondary). |
 
-##### Setting up ~/.profile
+#### Setting up ~/.profile
 
 The values for issuer, account name, endpoint, role, and secondary authorizer (if needed) make the most sense to add to your future sessions.
 
 The endpoint variable is one that will have to be gotten from the application operator and issue, account name, role, and secondary are values that are made up when a device is enrolled.
 
-#### Enrolling an admin device
-
-When enrolling a device, the user running the commands will need active AWS creds with permission  to write to the DynamoDB table.
-
-```bash
-sts enroll --issuer personal-account --account-name admin
-```
-
-For the above example, the table name was set by env var and, for the admin role, no AWS Roles were associated and there are no secondary authorizers.
-
-#### Enrolling the first user device
-
-For enrolling the first user/device needs the same permissions as aboce.
-
-```bash
-sts enroll --issuer personal-account --account-name chromebook-admin --roles AccountAdmmin --secondary-authorizers admin
-```
-
-This will create a new user within the bounds of the same issuer and assign a custom adim role to it while also forcing the admin user to help with multi-party auth.
-
-#### Getting the first AWS STS creds

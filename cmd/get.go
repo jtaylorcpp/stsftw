@@ -77,7 +77,7 @@ var getCmd = &cobra.Command{
 			logger.Fatal().Err(unmarshallErr).Msg("Unable to unmarshal JSON response")
 		}
 
-		fmt.Printf("AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\nAWS_SESSION_TOKEN=%s\n",
+		fmt.Printf("export AWS_ACCESS_KEY_ID=%s\nexport AWS_SECRET_ACCESS_KEY=%s\nexport AWS_SESSION_TOKEN=%s\n",
 			creds.AccessKeyId,
 			creds.SecretAccessKey,
 			creds.SessionToken)
