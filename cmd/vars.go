@@ -10,6 +10,7 @@ var stsRoles []string
 var stsRole string
 var stsSecondaryAuthorizers []string
 var stsSecondaryAuthorizer string
+var logLevel string
 
 func init() {
 	// root binds
@@ -17,6 +18,7 @@ func init() {
 	sts.Bind("endpoint", rootCmd.PersistentFlags().Lookup("endpoint"))
 	sts.Bind("issuer", rootCmd.PersistentFlags().Lookup("issuer"))
 	sts.Bind("account_name", rootCmd.PersistentFlags().Lookup("account-name"))
+	sts.Bind("log_level", rootCmd.PersistentFlags().Lookup("log-level"))
 
 	// enroll binds
 	sts.Bind("roles", enrollCmd.PersistentFlags().Lookup("roles"))

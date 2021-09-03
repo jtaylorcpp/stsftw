@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/jtaylorcpp/sts"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -54,12 +53,13 @@ var enrollCmd = &cobra.Command{
 
 		tableEntry, entryErr := sts.NewTOTPEntry(key)
 		if entryErr != nil {
-			logrus.Errorln(entryErr.Error())
+			logger.Err(entryErr).Msg("Error writing new entry to table")
 		}
 
 		tableEntry.SecondaryAuthorization = sts.GetStringArrayFlag("secondary_authorizers")
 		tableEntry.Roles = sts.GetStringArrayFlag("roles")
-		logrus.Infof("Adding entry to DynamoDB: %#v\n", tableEntry)
+		logger.WithEntry(tableEntry)
+		logger.Info().Msg("Adding new entry to table")
 		sts.AddTOTPEntryToTable(sts.GetStringFlag("table_name"), tableEntry)
 	},
 }

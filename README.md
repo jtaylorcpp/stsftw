@@ -32,9 +32,11 @@ These AWS STS creds are provided by a AWS Lambda, AWS ALB setup in which (for th
 
 ![](docs/STSFTW_Sequence_Diagram.png)
 
-## Getting Started
+---
 
-### Prerequisites
+# Getting Started
+
+## Prerequisites
 
 1. An AWS account in which you have permissions for:
     - SNS
@@ -59,9 +61,11 @@ These AWS STS creds are provided by a AWS Lambda, AWS ALB setup in which (for th
 
 1. Terragrunt installed
 
-### Infrastructure
+## Infrastructure
 
-#### Create YAML Config for Terragrunt Deployment
+![](docs/STSFTW.png)
+
+### Create YAML Config for Terragrunt Deployment
 
 ```yaml
 bin_path: <path to this projects build dir or where the bins are stored>
@@ -77,7 +81,7 @@ region: <AWS region to deploy to>
 
 The above yaml content can be used to create a new yaml configuration file at `<repo root>/terraform/terragrunt/app.yml`.
 
-#### Deploy
+### Deploy
 
 ```sh
 make deploy
@@ -87,7 +91,7 @@ This step will build and provision all of the necessary resources to run the pro
 
 *NOTE*: Once this deploy is finished you will need to check the provided email to enroll in the SNS notifications.
 
-#### Getting a Local Binary
+### Getting a Local Binary
 
 ```sh
 make build_local_bin
@@ -95,9 +99,9 @@ make build_local_bin
 
 You will need `sudo` privileges to be able to run this command as it will try and place the newly created binary in `/usr/local/bin`.
 
-### Adding Users
+## Adding Users
 
-#### Admin User
+### Admin User
 
 It is recommended to create an Admin user that has no roles assigned to them. This way there is one privileged account with STSFTW that can solely be used for Multi-Party Authentication and nothing else.
 
@@ -109,7 +113,7 @@ sts enroll --account-name admin --issuer $STS_ISSUER --table-name $STS_TABLE_NAM
 
 Once this user has been created, we can use it to be the Multi-Party Authentication user for a user with admin priveleges.
 
-#### First User
+### First User
 
 As mentioned above, we'll create a user that has an administrative role assigned.
 
@@ -151,7 +155,7 @@ AWS Role: AccountAdmin
 
 ```
 
-#### ENV Vars and CLI Args
+### ENV Vars and CLI Args
 
 The STS client can be configured with both flags and ENV vars. Setting the ENV vars can allow a more simplified experience when using the cli.
 
@@ -168,7 +172,7 @@ The STS client can be configured with both flags and ENV vars. Setting the ENV v
 || totp-code | TOTP code from an enrolled device (primary). |
 || secondary-totp-code | TOTP code from an enrolled device (secondary). |
 
-#### Setting up ~/.profile
+### Setting up ~/.profile
 
 The values for issuer, account name, endpoint, role, and secondary authorizer (if needed) make the most sense to add to your future sessions.
 

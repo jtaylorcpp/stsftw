@@ -152,11 +152,6 @@ resource "aws_lambda_function" "sts_app" {
 
   runtime = "go1.x"
 
-  vpc_config {
-    subnet_ids = var.lambda_subnets
-    security_group_ids = [aws_security_group.outbound.id]
-  }
-
   environment {
     variables = {
       STS_TABLE_NAME = var.auth_table_name

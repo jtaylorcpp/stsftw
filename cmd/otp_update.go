@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/jtaylorcpp/sts"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -77,19 +76,19 @@ var deviceCmd = &cobra.Command{
 			var valid bool
 			valid, err = sts.ValidateTOTPFromCLI(key)
 			if err != nil {
-				logrus.Errorln(err.Error())
+				logger.Err(err).Msg("Error valdating OTP code")
 			}
 			if !valid {
-				logrus.Errorln("incorrect code entered")
+				logger.Debug().Msg("Invalid OTP code given")
 			} else {
 				score += 1
-				logrus.Infoln("Code accepted")
+				logger.Debug().Msg("Code accepted")
 			}
 		}
 
 		err = sts.UpdateTOTPEntryMFADevice(stsTableName, stsIssuer, stsAccountName, key)
 		if err != nil {
-			logrus.Errorln(err.Error())
+			logger.Err(err).Msg("Error updating device")
 		}
 	},
 }

@@ -13,6 +13,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&stsIssuer, "issuer", "", "TOTP Issuer")
 
 	rootCmd.PersistentFlags().StringVar(&stsAccountName, "account-name", "", "TOTP Account Name")
+
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "", "Logger leve (trace, debug, info, warn, error, panic, fatal")
 }
 
 var rootCmd = &cobra.Command{
